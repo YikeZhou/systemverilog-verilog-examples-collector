@@ -61,13 +61,14 @@ def archive(components: Iterable[str], filename: str) -> None:
         logging.fatal(f'Failed to merge files\n\t{filelist}\n')
 
 
-def analyze(parent_dir: Path) -> None:
+def analyze(parent_dir: Path) -> tuple[int, int]:
     """Analyze all .sv files under the parent_dir."""
 
     logging.info(f'\n\nStart analyzing [ {parent_dir.stem} ].')
 
     # Find all source files
-    candidates = parent_dir.glob('**/*.sv')
+    candidates = list(parent_dir.glob('**/*.sv'))
+    total = len(candidates)
     extracted = 0
 
     # Try to find the minimal compilable set for each .sv file
@@ -83,8 +84,8 @@ def analyze(parent_dir: Path) -> None:
             # For now, just give up
             logging.info(f'Drop "{candidate.as_posix()}"')
 
-    total = int(subprocess.check_output(f'ls {parent_dir.as_posix()}/**/*.sv | wc -l', shell=True).decode('utf-8'))
     logging.info(f'Extracted {extracted} standalone modules out of {total} files.')
+    return (extracted, total)
 
 
 def clone_repo(repo_name: str, parent_dir: Path | None = None) -> Path:
@@ -109,8 +110,15 @@ def clone_repo(repo_name: str, parent_dir: Path | None = None) -> Path:
 
 
 if __name__ == '__main__':
+    numerator = 0
+    denominator = 0
+
     repo_names = filter(lambda n: len(n) > 0, (n.strip() for n in open(GITHUB_REPOSITORIES, 'r')))
     for repo_name in repo_names:
         repo_path = clone_repo(repo_name)
-        analyze(repo_path)
+        extracted, total = analyze(repo_path)
+        numerator += extracted
+        denominator += total
         rmtree(repo_path)
+
+    logging.info(f'Summary: {numerator}/{denominator}')
