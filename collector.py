@@ -16,6 +16,10 @@ logging.basicConfig(level=logging.DEBUG,
                     filemode='w')
 
 
+def join_filepaths(filepaths: Iterable[str]):
+    return " ".join(f'"{f}"' for f in filepaths)
+
+
 def is_synthesizable(filepaths: Iterable[str]) -> str | None:
     """If the files are synthesizable, return the name of top module.
     Otherwise, return None."""
@@ -24,7 +28,7 @@ def is_synthesizable(filepaths: Iterable[str]) -> str | None:
         filelist = '\n\t'.join(filepaths)
         return f'{reason}:\n\t{filelist}\n'
 
-    cmdline = ['yosys', '-qq', '-p', f'plugin -i systemverilog; read_systemverilog -synth {" ".join(filepaths)}']
+    cmdline = ['yosys', '-qq', '-p', f'plugin -i systemverilog; read_systemverilog -synth {join_filepaths(filepaths)}']
     try:
         for line in subprocess.check_output(cmdline, timeout=1000).decode('utf-8').splitlines():
             if line.startswith('[NTE:EL0503]'):
@@ -49,7 +53,7 @@ def archive(components: Iterable[str], filename: str) -> None:
     """Merge multiple files into a standalone file."""
 
     output_path = OUTPUT_DIRECTORY / filename
-    cmdline = f'''cat {" ".join(components)} | sed '/^`/d' > {output_path.as_posix()}'''
+    cmdline = f'''cat {join_filepaths(components)} | sed '/^`/d' > {output_path.as_posix()}'''
     try:
         subprocess.run(cmdline, shell=True, check=True)
     except subprocess.CalledProcessError:
