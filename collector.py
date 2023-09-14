@@ -2,7 +2,9 @@ import logging
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
+from random import choices
 from shutil import rmtree
+from string import ascii_letters
 
 OUTPUT_DIRECTORY = Path.cwd() / 'rtl'
 OUTPUT_DIRECTORY.mkdir(exist_ok=True)
@@ -52,7 +54,14 @@ def is_synthesizable(filepaths: Iterable[str]) -> str | None:
 def archive(components: Iterable[str], filename: str) -> None:
     """Merge multiple files into a standalone file."""
 
+    def random_prefix(length: int = 5) -> str:
+        return ''.join(choices(ascii_letters, k=length)) + '_'
+
     output_path = OUTPUT_DIRECTORY / filename
+    # Rename if this file already exists
+    while output_path.exists():
+        output_path = OUTPUT_DIRECTORY / (random_prefix() + filename)
+
     cmdline = f'''cat {join_filepaths(components)} | sed '/^`/d' > {output_path.as_posix()}'''
     try:
         subprocess.run(cmdline, shell=True, check=True)
