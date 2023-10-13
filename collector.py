@@ -1,4 +1,5 @@
 import logging
+import re
 import subprocess
 from collections.abc import Iterable
 from pathlib import Path
@@ -51,7 +52,10 @@ def is_synthesizable(filepaths: Iterable[str]) -> str | None:
         return None
 
 
-def archive(components: Iterable[str], filename: str) -> None:
+INCLUDE_DIRECTIVE = re.compile(r'`include\s+"(?P<filename>[\w\.\/]+)"')
+
+
+def archive(component: Path, filename: str) -> Path:
     """Merge multiple files into a standalone file."""
 
     def random_prefix(length: int = 5) -> str:
@@ -62,12 +66,16 @@ def archive(components: Iterable[str], filename: str) -> None:
     while output_path.exists():
         output_path = OUTPUT_DIRECTORY / (random_prefix() + filename)
 
-    cmdline = f'''cat {join_filepaths(components)} | sed '/^`/d' > {output_path.as_posix()}'''
-    try:
-        subprocess.run(cmdline, shell=True, check=True)
-    except subprocess.CalledProcessError:
-        filelist = '\n\t'.join(components)
-        logging.fatal(f'Failed to merge files\n\t{filelist}\n')
+    def replace_include(match: re.Match):
+        """Replace the compiler directive [ `include "filename" ] with the entire contents."""
+
+        if n := match.group('filename'):
+            return (component.parent / n).read_text()
+        else:
+            return ''  # Remove this line
+
+    output_path.write_text(INCLUDE_DIRECTIVE.sub(replace_include, component.read_text()))
+    return output_path
 
 
 def analyze(parent_dir: Path) -> tuple[int, int]:
@@ -82,13 +90,16 @@ def analyze(parent_dir: Path) -> tuple[int, int]:
 
     # Try to find the minimal compilable set for each .sv file
     for candidate in candidates:
-        assert candidate.is_absolute()
+        if (top_module := is_synthesizable([candidate.as_posix()])):
+            filename = f'{top_module}.sv'
+            output_path = archive(candidate, filename)
+            # Validate the output
+            if is_synthesizable([output_path.as_posix()]):
+                extracted += 1
+            else:
+                logging.error(f'Failed to replace the `include directive in {candidate.as_posix()}')
+                output_path.unlink()
 
-        current_try = [candidate.as_posix()]
-
-        if (top_module := is_synthesizable(current_try)):
-            archive(current_try, f'{top_module}.sv')
-            extracted += 1
         else:
             # For now, just give up
             logging.info(f'Drop "{candidate.as_posix()}"')
