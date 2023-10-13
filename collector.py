@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import subprocess
 from collections.abc import Iterable
@@ -31,7 +32,10 @@ def is_synthesizable(filepaths: Iterable[str]) -> str | None:
         filelist = '\n\t'.join(filepaths)
         return f'{reason}:\n\t{filelist}\n'
 
-    cmdline = ['yosys', '-qq', '-p', f'plugin -i systemverilog; read_systemverilog -synth {join_filepaths(filepaths)}']
+    cmdline = [
+        os.environ['YOSYS_BINARY'], '-qq', '-p',
+        f'plugin -i systemverilog; read_systemverilog -synth {join_filepaths(filepaths)}'
+    ]
     try:
         for line in subprocess.check_output(cmdline, timeout=1000).decode('utf-8').splitlines():
             if line.startswith('[NTE:EL0503]'):
