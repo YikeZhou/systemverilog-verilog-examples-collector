@@ -52,7 +52,7 @@ def is_synthesizable(filepaths: Iterable[str]) -> str | None:
         elif isinstance(err, AssertionError):
             reason = 'Top module not found'
 
-        logging.fatal(err_msg(reason))
+        logging.debug(err_msg(reason))
         return None
 
 
@@ -106,7 +106,7 @@ def analyze(parent_dir: Path) -> tuple[int, int]:
 
         else:
             # For now, just give up
-            logging.info(f'Drop "{candidate.as_posix()}"')
+            logging.debug(f'Drop "{candidate.as_posix()}"')
 
     logging.info(f'Extracted {extracted} standalone modules out of {total} files.')
     return (extracted, total)
