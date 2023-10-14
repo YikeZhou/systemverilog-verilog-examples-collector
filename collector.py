@@ -12,6 +12,9 @@ OUTPUT_DIRECTORY.mkdir(exist_ok=True)
 
 GITHUB_REPOSITORIES = 'repos.txt'
 
+AUTO_TOP_MODULE = re.compile(r'Automatically selected (?P<top>[a-zA-Z_][a-zA-Z0-9_\$]*) as design top module.')
+INCLUDE_DIRECTIVE = re.compile(r'`include\s+"(?P<filename>[\w\.\/]+)"')
+
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                     datefmt='%m-%d %H:%M',
@@ -23,31 +26,32 @@ def is_synthesizable(filepath: Path) -> str | None:
     """If the files are synthesizable, return the name of top module.
     Otherwise, return None."""
 
-    cmdline = [
-        os.environ['YOSYS_BINARY'], '-qq', '-p',
-        f'plugin -i systemverilog; read_systemverilog -synth {filepath.as_posix()}'
-    ]
+    cmdline = [os.environ['YOSYS_BINARY'], '-p']
+    if filepath.suffix == '.sv':
+        cmdline.append(f'plugin -i systemverilog; read_systemverilog -synth {filepath.as_posix()}')
+    elif filepath.suffix == '.v':
+        cmdline.append(f'read_verilog {filepath.as_posix()}; synth')
+    else:
+        logging.error(f'unsupported file extension "{filepath.suffix}"')
+        return None
+
     try:
-        for line in subprocess.check_output(cmdline, timeout=1000).decode('utf-8').splitlines():
+        output = subprocess.check_output(cmdline, timeout=1000).decode('utf-8')
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        return None
+
+    try:
+        for line in output.splitlines():
             if line.startswith('[NTE:EL0503]'):
                 assert (start := line.find('@')) != -1
                 assert (end := line[start + 1:].find('"')) != -1
                 return line[start + 1:start + 1 + end]
+            if m := AUTO_TOP_MODULE.match(line):
+                return m.group('top')
 
-    except Exception as err:
-        reason = 'Unknown'
-        if isinstance(err, subprocess.CalledProcessError):
-            reason = 'Yosys exited unexpectedly'
-        elif isinstance(err, subprocess.TimeoutExpired):
-            reason = 'TIMEOUT'
-        elif isinstance(err, AssertionError):
-            reason = 'Top module not found'
-
-        logging.debug(f'{reason}:\n\t{filepath.as_posix()}\n')
+    except AssertionError:
+        logging.debug(f'Top module not found:\n\t{filepath.as_posix()}\n')
         return None
-
-
-INCLUDE_DIRECTIVE = re.compile(r'`include\s+"(?P<filename>[\w\.\/]+)"')
 
 
 def archive(component: Path, filename: str) -> Path:
