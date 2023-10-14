@@ -14,6 +14,7 @@ harpreetbhatia/sv_practice
 hedgeberg/VerilogCommon
 JeffDeCola/my-verilog-examples
 johan92/verilog-coding-style
+loykylewong/FPGA-Application-Development-and-Simulation
 luuvish/system-verilog-patterns
 mchong6/MNIST-classifier-in-SystemVerilog
 medalotte/SystemVerilog-UART
