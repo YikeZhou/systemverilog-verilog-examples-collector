@@ -2,7 +2,6 @@ import logging
 import os
 import re
 import subprocess
-from collections.abc import Iterable
 from pathlib import Path
 from random import choices
 from shutil import rmtree
@@ -20,21 +19,13 @@ logging.basicConfig(level=logging.DEBUG,
                     filemode='w')
 
 
-def join_filepaths(filepaths: Iterable[str]):
-    return " ".join(f'"{f}"' for f in filepaths)
-
-
-def is_synthesizable(filepaths: Iterable[str]) -> str | None:
+def is_synthesizable(filepath: Path) -> str | None:
     """If the files are synthesizable, return the name of top module.
     Otherwise, return None."""
 
-    def err_msg(reason: str) -> str:
-        filelist = '\n\t'.join(filepaths)
-        return f'{reason}:\n\t{filelist}\n'
-
     cmdline = [
         os.environ['YOSYS_BINARY'], '-qq', '-p',
-        f'plugin -i systemverilog; read_systemverilog -synth {join_filepaths(filepaths)}'
+        f'plugin -i systemverilog; read_systemverilog -synth {filepath.as_posix()}'
     ]
     try:
         for line in subprocess.check_output(cmdline, timeout=1000).decode('utf-8').splitlines():
@@ -52,7 +43,7 @@ def is_synthesizable(filepaths: Iterable[str]) -> str | None:
         elif isinstance(err, AssertionError):
             reason = 'Top module not found'
 
-        logging.debug(err_msg(reason))
+        logging.debug(f'{reason}:\n\t{filepath.as_posix()}\n')
         return None
 
 
@@ -92,13 +83,12 @@ def analyze(parent_dir: Path) -> tuple[int, int]:
     total = len(candidates)
     extracted = 0
 
-    # Try to find the minimal compilable set for each .sv file
     for candidate in candidates:
-        if (top_module := is_synthesizable([candidate.as_posix()])):
+        if (top_module := is_synthesizable(candidate)):
             filename = f'{top_module}.sv'
             output_path = archive(candidate, filename)
             # Validate the output
-            if is_synthesizable([output_path.as_posix()]):
+            if is_synthesizable(output_path):
                 extracted += 1
             else:
                 logging.error(f'Failed to replace the `include directive in {candidate.as_posix()}')
