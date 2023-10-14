@@ -7,6 +7,8 @@ from random import choices
 from shutil import rmtree
 from string import ascii_letters
 
+from tqdm import tqdm
+
 OUTPUT_DIRECTORY = Path.cwd() / 'rtl'
 OUTPUT_DIRECTORY.mkdir(exist_ok=True)
 
@@ -78,31 +80,34 @@ def archive(component: Path, filename: str) -> Path:
 
 
 def analyze(parent_dir: Path) -> tuple[int, int]:
-    """Analyze all .sv files under the parent_dir."""
+    """Analyze all .[sv|v] files under the parent_dir."""
 
+    extracted = total = 0
     logging.info(f'\n\nStart analyzing [ {parent_dir.stem} ].')
 
-    # Find all source files
-    candidates = list(parent_dir.glob('**/*.sv'))
-    total = len(candidates)
-    extracted = 0
+    for file_extension in ('.sv', '.v'):
 
-    for candidate in candidates:
-        if (top_module := is_synthesizable(candidate)):
-            filename = f'{top_module}.sv'
-            output_path = archive(candidate, filename)
-            # Validate the output
-            if is_synthesizable(output_path):
-                extracted += 1
+        # Find all source files
+        candidates = list(parent_dir.glob(f'**/*{file_extension}'))
+        total += len(candidates)
+
+        for candidate in tqdm(candidates, desc=f'{parent_dir.stem}({file_extension})', total=len(candidates)):
+            if (top_module := is_synthesizable(candidate)):
+                filename = f'{top_module}{file_extension}'
+                output_path = archive(candidate, filename)
+                # Validate the output
+                if is_synthesizable(output_path):
+                    extracted += 1
+                else:
+                    logging.error(f'Failed to replace the `include directive in {candidate.as_posix()}')
+                    output_path.unlink()
+
             else:
-                logging.error(f'Failed to replace the `include directive in {candidate.as_posix()}')
-                output_path.unlink()
+                # For now, just give up
+                logging.debug(f'Drop "{candidate.as_posix()}"')
 
-        else:
-            # For now, just give up
-            logging.debug(f'Drop "{candidate.as_posix()}"')
+        logging.info(f'Extracted {extracted} standalone {file_extension} modules out of {total} files.')
 
-    logging.info(f'Extracted {extracted} standalone modules out of {total} files.')
     return (extracted, total)
 
 
