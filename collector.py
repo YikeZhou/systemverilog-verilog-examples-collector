@@ -34,7 +34,7 @@ def is_synthesizable(filepath: Path) -> str | None:
     elif filepath.suffix == '.v':
         cmdline.append(f'read_verilog {filepath.as_posix()}; synth')
     else:
-        logging.error(f'unsupported file extension "{filepath.suffix}"')
+        logging.error(f'Unsupported file extension "{filepath.suffix}"')
         return None
 
     try:
@@ -138,7 +138,7 @@ def clone_repo(repo_name: str, parent_dir: Path | None = None) -> Path | None:
                        shell=True,
                        check=True)
     except subprocess.CalledProcessError:
-        logging.fatal(f'failed to clone repo "{repo_name}"')
+        logging.fatal(f'Failed to clone repo "{repo_name}"')
         return None
 
     return parent_dir / subdir_name
