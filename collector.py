@@ -78,7 +78,10 @@ def archive(component: Path, filename: str) -> Path:
             # Therefore, it's necessary to handle `FileNotFoundError`s here.
             return ''  # Remove this line
 
-    output_path.write_text(INCLUDE_DIRECTIVE.sub(replace_include, component.read_text()))
+    data = component.read_text()
+    while INCLUDE_DIRECTIVE.search(data):
+        data = INCLUDE_DIRECTIVE.sub(replace_include, data)
+    output_path.write_text(data)
     return output_path
 
 
