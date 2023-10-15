@@ -85,7 +85,7 @@ def archive(component: Path, filename: str) -> Path:
     return output_path
 
 
-def analyze(parent_dir: Path) -> tuple[int, int]:
+def analyze(parent_dir: Path, progress_bar: bool = True) -> tuple[int, int]:
     """Analyze all .[sv|v] files under the parent_dir."""
 
     extracted = total = 0
@@ -97,7 +97,9 @@ def analyze(parent_dir: Path) -> tuple[int, int]:
         candidates = list(parent_dir.glob(f'**/*{file_extension}'))
         total += len(candidates)
 
-        for candidate in tqdm(candidates, desc=f'{parent_dir.stem}({file_extension})', total=len(candidates)):
+        if progress_bar:
+            candidates = tqdm(candidates, desc=f'{parent_dir.stem}({file_extension})', total=len(candidates))
+        for candidate in candidates:
             if (top_module := is_synthesizable(candidate)):
                 filename = f'{top_module}{file_extension}'
                 output_path = archive(candidate, filename)
