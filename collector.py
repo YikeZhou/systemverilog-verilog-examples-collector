@@ -114,7 +114,7 @@ def analyze(parent_dir: Path) -> tuple[int, int]:
     return (extracted, total)
 
 
-def clone_repo(repo_name: str, parent_dir: Path | None = None) -> Path:
+def clone_repo(repo_name: str, parent_dir: Path | None = None) -> Path | None:
     """Clone the repo under parent_dir (default=`Path.cwd()`).
     Return the path to the cloned directory."""
 
@@ -130,7 +130,13 @@ def clone_repo(repo_name: str, parent_dir: Path | None = None) -> Path:
         parent_dir = Path.cwd()
 
     subdir_name = shorter_name_of(repo_name)
-    subprocess.run(f'cd {parent_dir.as_posix()} && git clone {clone_url_of(repo_name)} {subdir_name}', shell=True)
+    try:
+        subprocess.run(f'cd {parent_dir.as_posix()} && git clone {clone_url_of(repo_name)} {subdir_name}',
+                       shell=True,
+                       check=True)
+    except subprocess.CalledProcessError:
+        logging.fatal(f'failed to clone repo "{repo_name}"')
+        return None
 
     return parent_dir / subdir_name
 
@@ -141,10 +147,10 @@ if __name__ == '__main__':
 
     repo_names = filter(lambda n: len(n) > 0, (n.strip() for n in open(GITHUB_REPOSITORIES, 'r')))
     for repo_name in repo_names:
-        repo_path = clone_repo(repo_name)
-        extracted, total = analyze(repo_path)
-        numerator += extracted
-        denominator += total
-        rmtree(repo_path)
+        if repo_path := clone_repo(repo_name):
+            extracted, total = analyze(repo_path)
+            numerator += extracted
+            denominator += total
+            rmtree(repo_path)
 
     logging.info(f'Summary: {numerator}/{denominator}')
