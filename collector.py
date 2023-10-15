@@ -38,7 +38,7 @@ def is_synthesizable(filepath: Path) -> str | None:
         return None
 
     try:
-        output = subprocess.check_output(cmdline, timeout=1000).decode('utf-8')
+        output = subprocess.check_output(cmdline, timeout=1000, stderr=subprocess.DEVNULL).decode('utf-8')
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return None
 
