@@ -70,9 +70,12 @@ def archive(component: Path, filename: str) -> Path:
     def replace_include(match: re.Match):
         """Replace the compiler directive [ `include "filename" ] with the entire contents."""
 
-        if n := match.group('filename'):
+        try:
+            n = match.group('filename')
             return (component.parent / n).read_text()
-        else:
+        except:
+            # NOTE: The regex matching cannot exclude `include in comments or `ifdef blocks.
+            # Therefore, it's necessary to handle `FileNotFoundError`s here.
             return ''  # Remove this line
 
     output_path.write_text(INCLUDE_DIRECTIVE.sub(replace_include, component.read_text()))
