@@ -95,10 +95,9 @@ def analyze(parent_dir: Path, progress_bar: bool = True) -> tuple[int, int]:
     logging.info(f'\n\nStart analyzing [ {parent_dir.stem} ].')
 
     for file_extension in ('.sv', '.v'):
-
         # Find all source files
         candidates = list(parent_dir.glob(f'**/*{file_extension}'))
-        total += len(candidates)
+        sub_extracted = 0
 
         if progress_bar:
             candidates = tqdm(candidates, desc=f'{parent_dir.stem}({file_extension})', total=len(candidates))
@@ -108,7 +107,7 @@ def analyze(parent_dir: Path, progress_bar: bool = True) -> tuple[int, int]:
                 output_path = archive(candidate, filename)
                 # Validate the output
                 if is_synthesizable(output_path):
-                    extracted += 1
+                    sub_extracted += 1
                 else:
                     logging.error(f'Failed to replace the `include directive in {candidate.as_posix()}')
                     output_path.unlink()
@@ -117,7 +116,9 @@ def analyze(parent_dir: Path, progress_bar: bool = True) -> tuple[int, int]:
                 # For now, just give up
                 logging.debug(f'Drop "{candidate.as_posix()}"')
 
-        logging.info(f'Extracted {extracted} standalone {file_extension} modules out of {total} files.')
+        logging.info(f'Extracted {sub_extracted} standalone {file_extension} modules out of {len(candidates)} files.')
+        extracted += sub_extracted
+        total += len(candidates)
 
     return (extracted, total)
 
