@@ -6,7 +6,7 @@ ARC-Lab-UF/sv-tutorial
 avakar/usbcorev
 chipsalliance/f4pga-examples
 chipsalliance/Surelog
-chipsalliance/systemverilog-plugin
+chipsalliance/synlig
 circuitvalley/USB_C_Industrial_Camera_FPGA_USB3
 cluelogic/cluelib
 dan-rodrigues/icestation-32
