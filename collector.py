@@ -82,7 +82,9 @@ def archive(component: Path, filename: str) -> Path:
             return ''  # Remove this line
 
     data = component.read_text()
-    while INCLUDE_DIRECTIVE.search(data):
+    max_iter = 5  # Avoid infinite loop
+    while max_iter > 0 and INCLUDE_DIRECTIVE.search(data):
+        max_iter -= 1
         data = INCLUDE_DIRECTIVE.sub(replace_include, data)
     output_path.write_text(data)
     return output_path
