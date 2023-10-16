@@ -32,7 +32,7 @@ def is_synthesizable(filepath: Path) -> str | None:
     if filepath.suffix == '.sv':
         cmdline.append(f'plugin -i systemverilog; read_systemverilog -synth {filepath.as_posix()}')
     elif filepath.suffix == '.v':
-        cmdline.append(f'read_verilog {filepath.as_posix()}; synth')
+        cmdline.append(f'read_verilog {filepath.as_posix()}; synth -auto-top')
     else:
         logging.error(f'Unsupported file extension "{filepath.suffix}"')
         return None
@@ -50,6 +50,9 @@ def is_synthesizable(filepath: Path) -> str | None:
                 return line[start + 1:start + 1 + end]
             if m := AUTO_TOP_MODULE.match(line):
                 return m.group('top')
+        else:
+            logging.error(f'Failed to detect the top module in {filepath.as_posix()}')
+            return None
 
     except AssertionError:
         logging.debug(f'Top module not found:\n\t{filepath.as_posix()}\n')
